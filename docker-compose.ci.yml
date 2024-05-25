@@ -10,6 +10,10 @@ services:
         MYSQL_PASSWORD: "mysqlpassword"
 
   php:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: ci
     networks:
       - ci
     volumes:
@@ -21,9 +25,14 @@ services:
       - mariadb
 
   node:
-    image: node:20
+    build:
+      context: .
+      dockerfile: Dockerfile.node
+      target: base
+    networks:
+      - ci
     volumes:
-      - .:/usr/src/app/
+      - .:/usr/src/app/:cached
     working_dir: /usr/src/app/
     networks: 
       - ci

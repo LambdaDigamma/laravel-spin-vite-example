@@ -7,6 +7,7 @@ services:
     ports:
       - "80:80"
       - "443:443"
+      - 5173:5173
     volumes:
       # Add Docker as a mounted volume, so that Traefik can read the labels of other services
       - /var/run/docker.sock:/var/run/docker.sock:ro
@@ -16,10 +17,14 @@ services:
 
   php:
     build:
+      context: .
+      dockerfile: Dockerfile
       target: development
       args:
         USER_ID: ${SPIN_USER_ID}
         GROUP_ID: ${SPIN_GROUP_ID}
+    environment:
+      SSL_MODE: "full"
     volumes:
       - .:/var/www/html/
     networks:
@@ -32,16 +37,29 @@ services:
       - "traefik.http.routers.laravel.rule=HostRegexp(`laravel.dev.test`)"
       - "traefik.http.routers.laravel.entrypoints=websecure"
       - "traefik.http.routers.laravel.tls=true"
-      - "traefik.http.services.laravel.loadbalancer.server.port=8080"
-      - "traefik.http.services.laravel.loadbalancer.server.scheme=http"
-  
+      - "traefik.http.services.laravel.loadbalancer.server.port=8443"
+      - "traefik.http.services.laravel.loadbalancer.server.scheme=https"
+
   node:
-    image: node:20
+    build:
+      context: .
+      dockerfile: Dockerfile.node
+      args:
+        USER_ID: ${SPIN_USER_ID}
+    environment:
+      VITE_HOST: "vite.dev.test"
     volumes:
-      - .:/usr/src/app/
+      - .:/usr/src/app/:cached
     working_dir: /usr/src/app/
-    networks: 
+    networks:
       - development
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.vite.rule=HostRegexp(`vite.dev.test`)"
+      - "traefik.http.routers.vite.entrypoints=websecure"
+      - "traefik.http.routers.vite.tls=true"
+      - "traefik.http.services.vite.loadbalancer.server.port=5173"
+      - "traefik.http.services.vite.loadbalancer.server.scheme=https"
 
   mariadb:
     networks:
